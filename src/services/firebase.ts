@@ -5,13 +5,14 @@ import { AppData } from '../types';
 import { INITIAL_APP_DATA } from '../constants/initialData';
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyAnUdWOOAZhOfRtx-GfW89pz1iKrDonz_s",
-  authDomain: "birbir-town-khc-bible-sc-82849.firebaseapp.com",
-  databaseURL: "https://birbir-town-khc-bible-sc-82849-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "birbir-town-khc-bible-sc-82849",
-  storageBucket: "birbir-town-khc-bible-sc-82849.firebasestorage.app",
-  messagingSenderId: "745550786105",
-  appId: "1:745550786105:web:6724bcaecde6d39b1967e8"
+  apiKey: "AIzaSyCRyDJHarx0va7X5pXXP2rnGafq2eBLq9s",
+  authDomain: "birbir-khc-child-page.firebaseapp.com",
+  databaseURL: "https://birbir-khc-child-page-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "birbir-khc-child-page",
+  storageBucket: "birbir-khc-child-page.firebasestorage.app",
+  messagingSenderId: "44927911746",
+  appId: "1:44927911746:web:e4ccfd7048a7ee1fb8aadb",
+  measurementId: "G-XMQ04TVFFN"
 };
 
 let appInstance: any = null;
