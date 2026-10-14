@@ -1,37 +1,76 @@
-import React, { useState } from 'react';
-import { UserCheck, UserPlus, Trash2, Search, KeyRound, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  UserCheck,
+  UserPlus,
+  Trash2,
+  Search,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+  BookOpen
+} from 'lucide-react';
 import { Teacher, Role } from '../types';
 
 interface TeachersTabProps {
   teachers: Teacher[];
   classList: string[];
+  subjects: string[];
   currentUserRole: Role | null;
   onUpdateTeacher: (teacher: Teacher) => void;
   onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void;
   onDeleteTeacher: (id: number) => void;
+  onReorderTeachers?: (teachers: Teacher[]) => void;
 }
 
 export const TeachersTab: React.FC<TeachersTabProps> = ({
   teachers,
   classList,
+  subjects,
   currentUserRole,
   onUpdateTeacher,
   onAddTeacher,
-  onDeleteTeacher
+  onDeleteTeacher,
+  onReorderTeachers
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPins, setShowPins] = useState(false);
+  const [sortBy, setSortBy] = useState<'class' | 'name' | 'id'>('class');
 
   // Form states
   const [name, setName] = useState('');
   const [assignedClass, setAssignedClass] = useState(classList[0]);
+  const [assignedSubject, setAssignedSubject] = useState(subjects[0] || 'አጠቃላይ');
   const [pin, setPin] = useState('');
 
   const isAdmin = currentUserRole === 'admin';
 
-  const filteredTeachers = teachers.filter((t) =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Sort teachers in orderly sequence
+  const sortedTeachers = useMemo(() => {
+    const list = [...teachers];
+    if (sortBy === 'class') {
+      return list.sort((a, b) => {
+        const indexA = classList.indexOf(a.assignedClass);
+        const indexB = classList.indexOf(b.assignedClass);
+        const safeA = indexA === -1 ? 999 : indexA;
+        const safeB = indexB === -1 ? 999 : indexB;
+        if (safeA !== safeB) return safeA - safeB;
+        return a.name.localeCompare(b.name, 'am');
+      });
+    } else if (sortBy === 'name') {
+      return list.sort((a, b) => a.name.localeCompare(b.name, 'am'));
+    } else {
+      return list.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+    }
+  }, [teachers, sortBy, classList]);
+
+  const filteredTeachers = sortedTeachers.filter((t) =>
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.assignedClass.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (t.assignedSubject && t.assignedSubject.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleNameBlur = (teacher: Teacher, newName: string) => {
@@ -44,8 +83,30 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
     onUpdateTeacher({ ...teacher, assignedClass: newClass });
   };
 
+  const handleSubjectChange = (teacher: Teacher, newSubject: string) => {
+    onUpdateTeacher({ ...teacher, assignedSubject: newSubject });
+  };
+
   const handlePinChange = (teacher: Teacher, newPin: string) => {
     onUpdateTeacher({ ...teacher, pin: newPin.trim() });
+  };
+
+  const handleMove = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= sortedTeachers.length) return;
+
+    const updated = [...sortedTeachers];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(targetIndex, 0, moved);
+
+    // Assign explicit order indices
+    const withOrder = updated.map((t, idx) => ({ ...t, order: idx + 1 }));
+    if (onReorderTeachers) {
+      onReorderTeachers(withOrder);
+    } else {
+      withOrder.forEach((t) => onUpdateTeacher(t));
+    }
+    setSortBy('id'); // Switch to custom sequence view
   };
 
   const handleAddSubmit = (e: React.FormEvent) => {
@@ -58,7 +119,9 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
     onAddTeacher({
       name: name.trim(),
       assignedClass,
-      pin: finalPin
+      assignedSubject,
+      pin: finalPin,
+      order: teachers.length + 1
     });
 
     setName('');
@@ -68,27 +131,44 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Controls */}
+      {/* Controls Header */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm print:hidden">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-teal-700" />
-              የመምህራን ዝርዝር፣ የተመደቡበት ክፍል እና የግል PIN
+              የመምህራን ዝርዝር፣ የተመደቡበት ክፍል፣ ትምህርት እና የግል PIN
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              ጠቅላላ መምህራን፦ <strong className="text-teal-900 font-bold">{teachers.length}</strong>
+              ጠቅላላ መምህራን፦ <strong className="text-teal-900 font-bold">{teachers.length}</strong> | 
+              በቅደም ተከተል የተደራጁ
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Sorting Sequence Selector */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
+              <span className="font-semibold text-slate-600">ቅደም ተከተል፦</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer"
+              >
+                <option value="class">በክፍል ደረጃ (ማቆያ - 12ኛ)</option>
+                <option value="name">በመምህር ስም (ሀ - ፐ)</option>
+                <option value="id">በተራ ቁጥር / በብጁ</option>
+              </select>
+            </div>
+
+            {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="መምህር ፈልግ..."
+                placeholder="መምህር / ክፍል / ትምህርት..."
                 className="pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-600 w-48"
               />
             </div>
@@ -123,28 +203,31 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
           <table className="w-full border-collapse text-left text-xs">
             <thead>
               <tr className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-center">
-                <th className="py-3 px-3 border-r border-slate-200 w-12">ተ.ቁ</th>
-                <th className="py-3 px-4 border-r border-slate-200 text-left min-w-[180px]">
+                <th className="py-3 px-2 border-r border-slate-200 w-12">ተ.ቁ</th>
+                <th className="py-3 px-4 border-r border-slate-200 text-left min-w-[170px]">
                   የመምህር ስም
                 </th>
-                <th className="py-3 px-4 border-r border-slate-200 min-w-[160px]">
+                <th className="py-3 px-4 border-r border-slate-200 min-w-[150px]">
                   የተመደበበት ክፍል
                 </th>
-                <th className="py-3 px-4 border-r border-slate-200 w-32">የግል PIN</th>
-                {isAdmin && <th className="py-3 px-3 print:hidden w-16">ተግባር</th>}
+                <th className="py-3 px-4 border-r border-slate-200 min-w-[170px]">
+                  የሚያስተምሩት የትምህርት ዓይነት
+                </th>
+                <th className="py-3 px-3 border-r border-slate-200 w-28">የግል PIN</th>
+                {isAdmin && <th className="py-3 px-2 print:hidden w-28">ቅደም ተከተል / ተግባር</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-center">
               {filteredTeachers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
                     ምንም መምህር አልተገኘም።
                   </td>
                 </tr>
               ) : (
                 filteredTeachers.map((t, idx) => (
                   <tr key={t.id} className="hover:bg-slate-50 transition">
-                    <td className="py-2.5 px-3 border-r border-slate-200 text-slate-500 font-medium">
+                    <td className="py-2.5 px-2 border-r border-slate-200 text-slate-500 font-medium">
                       {idx + 1}
                     </td>
 
@@ -168,7 +251,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
                         <select
                           value={t.assignedClass}
                           onChange={(e) => handleClassChange(t, e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-teal-600"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-teal-600"
                         >
                           {classList.map((c) => (
                             <option key={c} value={c}>
@@ -181,8 +264,31 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
                       )}
                     </td>
 
+                    {/* Assigned Subject */}
+                    <td className="py-2.5 px-4 border-r border-slate-200">
+                      {isAdmin ? (
+                        <select
+                          value={t.assignedSubject || 'አጠቃላይ'}
+                          onChange={(e) => handleSubjectChange(t, e.target.value)}
+                          className="w-full bg-teal-50/50 border border-teal-200 text-teal-900 rounded-lg px-2.5 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-teal-600"
+                        >
+                          <option value="አጠቃላይ">አጠቃላይ / ሁሉም</option>
+                          {subjects.map((sub) => (
+                            <option key={sub} value={sub}>
+                              {sub}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-teal-800 font-medium bg-teal-50 px-2 py-0.5 rounded-md">
+                          <BookOpen className="w-3 h-3 text-teal-600" />
+                          {t.assignedSubject || 'አጠቃላይ'}
+                        </span>
+                      )}
+                    </td>
+
                     {/* PIN */}
-                    <td className="py-2.5 px-4 border-r border-slate-200 font-mono">
+                    <td className="py-2.5 px-3 border-r border-slate-200 font-mono">
                       {isAdmin ? (
                         <input
                           type={showPins ? 'text' : 'password'}
@@ -195,20 +301,41 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
                       )}
                     </td>
 
-                    {/* Actions */}
+                    {/* Order Controls & Actions */}
                     {isAdmin && (
-                      <td className="py-2.5 px-3 print:hidden">
-                        <button
-                          onClick={() => {
-                            if (confirm(`${t.name} የተባሉትን መምህር መሰረዝ ይፈልጋሉ?`)) {
-                              onDeleteTeacher(t.id);
-                            }
-                          }}
-                          className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 transition"
-                          title="መምህር ሰርዝ"
-                        >
-                          <Trash2 className="w-4 h-4 mx-auto" />
-                        </button>
+                      <td className="py-2 px-2 print:hidden">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleMove(idx, 'up')}
+                            disabled={idx === 0}
+                            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+                            title="ወደ ላይ ውሰድ"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMove(idx, 'down')}
+                            disabled={idx === filteredTeachers.length - 1}
+                            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+                            title="ወደ ታች አውርድ"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm(`${t.name} የተባሉትን መምህር መሰረዝ ይፈልጋሉ?`)) {
+                                onDeleteTeacher(t.id);
+                              }
+                            }}
+                            className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 transition ml-1"
+                            title="መምህር ሰርዝ"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -224,7 +351,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
             <h3 className="text-lg font-bold text-slate-900 mb-1">አዲስ መምህር መዝግብ</h3>
-            <p className="text-xs text-slate-500 mb-4">የመምህር መረጃ እና የግል PIN</p>
+            <p className="text-xs text-slate-500 mb-4">የመምህር መረጃ፣ ክፍል፣ ትምህርት እና የግል PIN</p>
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
@@ -253,6 +380,24 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
                   {classList.map((c) => (
                     <option key={c} value={c}>
                       {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  የሚያስተምሩት የትምህርት ዓይነት፦
+                </label>
+                <select
+                  value={assignedSubject}
+                  onChange={(e) => setAssignedSubject(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-600 bg-white"
+                >
+                  <option value="አጠቃላይ">አጠቃላይ / ሁሉም</option>
+                  {subjects.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
                     </option>
                   ))}
                 </select>

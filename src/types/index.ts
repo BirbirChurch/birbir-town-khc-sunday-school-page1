@@ -4,8 +4,10 @@ export interface Teacher {
   id: number;
   name: string;
   assignedClass: string;
+  assignedSubject?: string;
   pin: string;
   phone?: string;
+  order?: number;
 }
 
 export interface Student {
@@ -74,6 +76,9 @@ export interface AppData {
   };
   teachers: Teacher[];
   subjects: string[];
+  classSubjects?: {
+    [className: string]: string[];
+  };
   choirGroups: string[];
   choirMembers: ChoirMember[];
   spiritualGroups: string[];

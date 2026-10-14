@@ -345,6 +345,20 @@ export default function App() {
     });
   };
 
+  const handleUpdateClassSubjects = (newClassSubjects: { [className: string]: string[] }) => {
+    updateAppData((prev) => ({
+      ...prev,
+      classSubjects: newClassSubjects
+    }));
+  };
+
+  const handleReorderTeachers = (reorderedTeachers: Teacher[]) => {
+    updateAppData((prev) => ({
+      ...prev,
+      teachers: reorderedTeachers
+    }));
+  };
+
   // Save Role PINs
   const handleSavePins = (adminPin: string, leaderPin: string) => {
     updateAppData((prev) => ({
@@ -443,6 +457,9 @@ export default function App() {
                   onDeleteStudent={handleDeleteStudent}
                   currentUserRole={currentUserRole}
                   loggedInTeacher={loggedInTeacher}
+                  subjects={appData.subjects}
+                  classSubjects={appData.classSubjects || {}}
+                  onUpdateClassSubjects={handleUpdateClassSubjects}
                 />
               )}
 
@@ -502,16 +519,21 @@ export default function App() {
                 <TeachersTab
                   teachers={appData.teachers}
                   classList={CLASS_LIST}
+                  subjects={appData.subjects}
                   currentUserRole={currentUserRole}
                   onUpdateTeacher={handleUpdateTeacher}
                   onAddTeacher={handleAddTeacher}
                   onDeleteTeacher={handleDeleteTeacher}
+                  onReorderTeachers={handleReorderTeachers}
                 />
               )}
 
               {activeTab === 'subjectsTab' && (currentUserRole === 'admin' || currentUserRole === 'leader') && (
                 <SubjectsTab
                   subjects={appData.subjects}
+                  classList={CLASS_LIST}
+                  classSubjects={appData.classSubjects || {}}
+                  onUpdateClassSubjects={handleUpdateClassSubjects}
                   onAddSubject={handleAddSubject}
                   onDeleteSubject={handleDeleteSubject}
                   currentUserRole={currentUserRole}

@@ -188,11 +188,13 @@ export const LoginPortal: React.FC<LoginPortalProps> = ({
                   onChange={(e) => setSelectedTeacherId(Number(e.target.value))}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition"
                 >
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.assignedClass})
-                    </option>
-                  ))}
+                  {[...teachers]
+                    .sort((a, b) => a.name.localeCompare(b.name, 'am'))
+                    .map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.assignedClass}{t.assignedSubject ? ` - ${t.assignedSubject}` : ''})
+                      </option>
+                    ))}
                 </select>
               </div>
             )}

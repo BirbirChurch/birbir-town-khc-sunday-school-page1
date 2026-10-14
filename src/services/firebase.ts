@@ -55,6 +55,7 @@ export const loadStoredLocalData = (): AppData => {
         choirGroups: parsed.choirGroups || INITIAL_APP_DATA.choirGroups,
         spiritualGroups: parsed.spiritualGroups || INITIAL_APP_DATA.spiritualGroups,
         subjects: parsed.subjects || INITIAL_APP_DATA.subjects,
+        classSubjects: parsed.classSubjects || {},
       };
     }
   } catch (e) {
@@ -89,6 +90,7 @@ export const subscribeToAppData = (
         pins: val.pins || INITIAL_APP_DATA.pins,
         teachers: val.teachers || INITIAL_APP_DATA.teachers,
         subjects: val.subjects || INITIAL_APP_DATA.subjects,
+        classSubjects: val.classSubjects || {},
         choirGroups: val.choirGroups || INITIAL_APP_DATA.choirGroups,
         spiritualGroups: val.spiritualGroups || INITIAL_APP_DATA.spiritualGroups,
         plans: val.plans || INITIAL_APP_DATA.plans,
